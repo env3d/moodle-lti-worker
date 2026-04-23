@@ -1,0 +1,9 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "test"
+main = "src/index.js"
+compatibility_date = "2026-04-22"
+account_id = "b3ba0a94f49aa7771eed523512d1ef86"
+
+[vars]
+# Add non-sensitive variables here
+# JWK_KID = "moodle-key-1"
