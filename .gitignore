@@ -2,3 +2,5 @@ node_modules
 .dev.vars
 .DS_Store
 dist
+__pycache__
+*.logGYCrB
