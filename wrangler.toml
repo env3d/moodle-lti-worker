@@ -12,3 +12,7 @@ account_id = "b3ba0a94f49aa7771eed523512d1ef86"
 binding = "DB"
 database_name = "lti-launch-db"
 database_id = "0b6b81e9-6aee-4f19-9131-5d2ffe1d8702"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"

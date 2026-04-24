@@ -6,3 +6,6 @@ def test_example_2_passes():
 
 def test_example_3_fails():
 	assert 2 + 2 == 5
+
+def test_example_4_fails():
+	assert 2 + 2 == 5

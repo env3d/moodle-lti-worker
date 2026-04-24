@@ -59,3 +59,5 @@ echo "Pytest exit code: ${PYTEST_EXIT}"
 curl -X POST "${ENDPOINT}" \
   -H "Content-Type: application/json" \
   -d "{\"contextCode\":\"${CONTEXT_CODE}\",\"comment\":\"${COMMENT}\",\"grade\":${GRADE}}"
+
+echo 

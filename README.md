@@ -28,3 +28,13 @@ Then execute
 ```bash
 wranger deploy
 ```
+
+### To Grade
+
+Have students copy and paste this in their terminal (codespaces):
+
+```
+curl -fsSL https://<your-worker-domain>/scripts/submit.sh | bash
+```
+
+This will automatically run `pytest`, calculate the grades, and submit to grading.
