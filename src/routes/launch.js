@@ -23,7 +23,7 @@ launch.post("/launch", async (c) => {
 
     const customParams = payload["https://purl.imsglobal.org/spec/lti/claim/custom"] || {};
     const destinationUrl = customParams.url || "";
-    const sampleBody = {
+    const lti_body = {
       user_id: payload.sub,
       lineitem: agsClaim ? agsClaim.lineitem : null,
       client_id: client_id,
@@ -32,7 +32,13 @@ launch.post("/launch", async (c) => {
     };
 
     await ensureTable(c.env.DB);
-    const contextCode = await upsertLaunchContext(c.env.DB, sampleBody);    
+    const contextCode = await upsertLaunchContext(c.env.DB, lti_body);    
+
+    const sampleBody = {
+      contextCode: contextCode,
+      grade: 0,
+      comment: "Initial grade submission from LTI Bridge",
+    };
 
     if (destinationUrl) {
       const finalUrl = `${destinationUrl}#context_code=${contextCode}`;
@@ -40,6 +46,10 @@ launch.post("/launch", async (c) => {
     }
 
     return new Response(
+      `Example cURL to update grade:\n\n` +
+      `curl -d '${JSON.stringify(sampleBody)}' \\` + '\n' + 
+      'https://test.jmadar.workers.dev/update-grade' + '\n\n' +
+      'debug info:\n' +
       JSON.stringify(
         {
           message: "LTI Bridge Launch Successful",
@@ -53,7 +63,7 @@ launch.post("/launch", async (c) => {
         null,
         2
       ),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "text/plain" } }
     );
   } catch (e) {
     return new Response("Launch Error: " + e.message, { status: 500 });

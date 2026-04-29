@@ -9,8 +9,13 @@ grades.post("/update-grade", async (c) => {
     const body = await c.req.json();
     const { contextCode, grade, comment } = body;
 
-    if (!contextCode || !grade) {
+    if (!contextCode || grade === undefined || grade === null) {
       return new Response("Missing required fields: contextCode, grade", { status: 400, headers: CORS_HEADERS });
+    }
+
+    const parsedGrade = Number(grade);
+    if (Number.isNaN(parsedGrade)) {
+      return new Response("Invalid grade: must be a number", { status: 400, headers: CORS_HEADERS });
     }
 
     const row = await c.env.DB
@@ -38,7 +43,7 @@ grades.post("/update-grade", async (c) => {
       },
       body: JSON.stringify({
         userId: user_id,
-        scoreGiven: parseFloat(grade),
+        scoreGiven: parsedGrade,
         scoreMaximum: 100,
         comment: comment || "Auto-updated via Worker",
         activityProgress: "Completed",
