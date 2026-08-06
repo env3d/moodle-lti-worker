@@ -6,6 +6,17 @@ import { buildScoreUrl, fetchMoodleAccessToken } from "../services/moodle.js";
 
 const grades = new Hono();
 
+// Helper to escape special XML characters
+function escapeXml(unsafe) {
+  if (!unsafe) return "";
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 // Helper to post LTI 1.3 (AGS) grade
 async function updateGradeLti13({ launchData, parsedGrade, comment, env }) {
   const { user_id, lineitem, client_id, iss } = launchData;
@@ -49,7 +60,7 @@ async function updateGradeLti13({ launchData, parsedGrade, comment, env }) {
 }
 
 // Helper to post LTI 1.1 (POX XML) grade
-async function updateGradeLti11({ launchData, parsedGrade, env }) {
+async function updateGradeLti11({ launchData, parsedGrade, comment, env }) {
   const { sourced_id, outcome_url, consumer_key } = launchData;
 
   if (!sourced_id || !outcome_url) {
@@ -59,7 +70,15 @@ async function updateGradeLti11({ launchData, parsedGrade, env }) {
   // LTI 1.1 scores are expected to be normalized floats between 0.0 and 1.0
   const normalizedScore = parsedGrade > 1 ? parsedGrade / 100 : parsedGrade;
 
-  // 1. Correct POX XML Envelope structure
+  // Conditionally build <resultData> extension block if comment/feedback exists
+  const resultDataXml = comment
+    ? `
+        <resultData>
+          <text>${escapeXml(comment)}</text>
+        </resultData>`
+    : "";
+
+  // 1. Correct POX XML Envelope structure with optional resultData
   const xmlBody = `<?xml version="1.0" encoding="UTF-8"?>
 <imsx_POXEnvelopeRequest xmlns="http://www.imsglobal.org/services/ltiv1p1/xsd/imsoms_v1p0">
   <imsx_POXHeader>
@@ -78,7 +97,7 @@ async function updateGradeLti11({ launchData, parsedGrade, env }) {
           <resultScore>
             <language>en</language>
             <textString>${normalizedScore.toFixed(2)}</textString>
-          </resultScore>
+          </resultScore>${resultDataXml}
         </result>
       </resultRecord>
     </replaceResultRequest>
@@ -88,7 +107,7 @@ async function updateGradeLti11({ launchData, parsedGrade, env }) {
   // 2. Compute SHA-1 body hash (Base64 encoded)
   const bodyHash = crypto.createHash("sha1").update(xmlBody, "utf8").digest("base64");
 
-  const consumerSecret = 12345;
+  const consumerSecret = env.LTI11_CONSUMER_SECRET || env.CONSUMER_SECRET || 12345;
 
   const oauth = new OAuth({
     consumer: { key: consumer_key, secret: consumerSecret },
@@ -114,6 +133,7 @@ async function updateGradeLti11({ launchData, parsedGrade, env }) {
     headers: {
       ...authHeader,
       "Content-Type": "application/xml",
+      "User-Agent": "LTI-Bridge-Worker/1.0",
     },
     body: xmlBody,
   });
@@ -155,7 +175,7 @@ grades.post("/update-grade", async (c) => {
     let result;
 
     if (launchData.lti_version === "1.1") {
-      result = await updateGradeLti11({ launchData, parsedGrade, env: c.env });
+      result = await updateGradeLti11({ launchData, parsedGrade, comment, env: c.env });
     } else {
       // Default to LTI 1.3 / LTI Advantage
       result = await updateGradeLti13({ launchData, parsedGrade, comment, env: c.env });

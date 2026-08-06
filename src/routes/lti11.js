@@ -4,12 +4,29 @@ import { ensureTable, upsertLaunchContext } from "../services/db.js";
 const lti11 = new Hono();
 
 async function parseFormBody(req) {
-  const text = await req.text();
-  const searchParams = new URLSearchParams(text);
   const params = {};
-  for (const [key, value] of searchParams.entries()) {
-    params[key] = value;
+
+  // 1. Extract URL query parameters (?custom_url=... or ?url=...)
+  try {
+    const url = new URL(req.url);
+    for (const [key, value] of url.searchParams.entries()) {
+      params[key] = value;
+    }
+  } catch (e) {
+    // Ignore URL parse errors
   }
+
+  // 2. Extract and merge POST body parameters
+  try {
+    const text = await req.text();
+    const searchParams = new URLSearchParams(text);
+    for (const [key, value] of searchParams.entries()) {
+      params[key] = value; // Body values will override query params if duplicate
+    }
+  } catch (e) {
+    // Ignore body parse errors
+  }
+
   return params;
 }
 
@@ -22,7 +39,9 @@ lti11.post("/lti11", async (c) => {
     const sourcedId = params.lis_result_sourcedid || null; // Key identifier for grade passback
     const outcomeUrl = params.lis_outcome_service_url || null;
     const consumerKey = params.oauth_consumer_key || "";
-    const destinationUrl = params.custom_url || "";
+    
+    // Check multiple possible keys for the destination URL
+    const destinationUrl = params.custom_url || params.url || params.custom_custom_url || "";
 
     // Map into your database storage object
     const lti_body = {
